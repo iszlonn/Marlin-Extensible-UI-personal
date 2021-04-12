@@ -39,7 +39,7 @@ namespace ExtUI {
   void onPrintTimerStarted() { CrealityDWIN.Start_Print(isPrintingFromMedia()); }
   void onPrintTimerPaused() {}
   void onPrintTimerStopped() { CrealityDWIN.Stop_Print(); }
-  void onFilamentRunout(const extruder_t extruder) {}
+  void onFilamentRunout(const extruder_t extruder) { CrealityDWIN.Popup_Handler(Runout); }
   void onUserConfirmRequired(const char * const msg) { CrealityDWIN.Confirm_Handler(msg); }
   void onStatusChanged(const char * const msg) { CrealityDWIN.Update_Status(msg); }
 
@@ -49,9 +49,15 @@ namespace ExtUI {
 
   void onFactoryReset() {}
 
-  void onStoreSettings(char *buff) {}
+  void onStoreSettings(char *buff) {
+    CrealityDWIN.Save_Settings();
+    memcpy(buff, &CrealityDWIN.eeprom_settings, min(sizeof(CrealityDWIN.eeprom_settings), eeprom_data_size));
+  }
 
-  void onLoadSettings(const char *buff) {}
+  void onLoadSettings(const char *buff) {
+    memcpy(&CrealityDWIN.eeprom_settings, buff, min(sizeof(CrealityDWIN.eeprom_settings), eeprom_data_size));
+    CrealityDWIN.Load_Settings();
+  }
 
   void onConfigurationStoreWritten(bool success) {}
 
@@ -60,11 +66,11 @@ namespace ExtUI {
   #if HAS_MESH
     void onMeshLevelingStart() {}
 
-    void onMeshUpdate(const int8_t xpos, const int8_t ypos, const float zval) {
+    void onMeshUpdate(const int8_t xpos, const int8_t ypos, const float &zval) {
       // Called when any mesh points are updated
     }
 
-    void onMeshUpdate(const int8_t xpos, const int8_t ypos, const ExtUI::probe_state_t state) {
+    void onMeshUpdate(const int8_t xpos, const int8_t ypos, const probe_state_t state) {
       // Called to indicate a special condition
     }
   #endif
@@ -75,8 +81,19 @@ namespace ExtUI {
 
   #if HAS_PID_HEATING
     void onPidTuning(const result_t rst) {
-      if (rst == result_t::PID_TEMP_TOO_HIGH) {
-        CrealityDWIN.Popup_Handler(TempWarn, true);
+      switch (rst) {
+        case PID_BAD_EXTRUDER_NUM:
+          CrealityDWIN.Confirm_Handler((char*)"Bad extruder number");
+          break;
+        case PID_TEMP_TOO_HIGH:
+          CrealityDWIN.Confirm_Handler((char*)"Temp too high");
+          break;
+        case PID_TUNING_TIMEOUT:
+          CrealityDWIN.Confirm_Handler((char*)"PID Timout");
+          break;
+        case PID_DONE:
+          CrealityDWIN.Confirm_Handler((char*)"PID Done");
+          break;
       }
     }
   #endif
